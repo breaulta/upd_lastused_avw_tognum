@@ -1,0 +1,14 @@
+no gnumeric package on cpan
+
+to edit gnumeric file:
+-rename .gnumeric extension to .gz
+-run command "gunzip filename.gz"
+-edit file "filename" with regex
+
+Build an object oriented package with methods
+-openfile("filename.gnumeric")
+-savefile("filename.gnumeric")
+-readcell("B3")
+-writecell("B3", "new cell content")
+
+Once complete, look into creating cpan package that others could use.
