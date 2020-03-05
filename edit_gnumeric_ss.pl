@@ -3,9 +3,12 @@
 use strict;
 use warnings;
 
+#hardcoded for now; will change later
 my $gnumeric_ss = "sample_spreadsheet.gnumeric";
-my $gz_ss = "sample_spreadsheet.gz";
-my $ss = "sample_spreadsheet";
+#Use regex so code is applicable to any filename.
+$gnumeric_ss =~ /(.+)\.gnumeric$/;
+my $ss = $1;
+my $gz_ss = "$1.gz";
 
 #Will need to regex match the filename here for the .gnumeric to .gz swap
 rename $gnumeric_ss, $gz_ss;
