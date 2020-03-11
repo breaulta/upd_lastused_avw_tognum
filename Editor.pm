@@ -48,7 +48,14 @@ sub readcell {
 	#<gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell>
 	
 	#Split letter from number
-	#Dereference letter to number using %letters
+	$cell =~ /(\w)(\d+)/;
+	my $column = uc $1;	#Set everything to uppercase.
+	my $row = $2;
+	print "Reading Cell- Col:$column, Row:$row\n";
+	#Dereference letter to number using %letters, rows start at 0 instead of 1.
+	$column = $letters{$column};
+	$row--;
+	print "Type used by gnumeric- Col:$column, Row:$row\n";
 	#Find line that corresponds to cell
 	#read the contents and return them
 
