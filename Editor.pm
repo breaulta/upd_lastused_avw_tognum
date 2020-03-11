@@ -3,6 +3,12 @@ package Editor;
 use strict;
 use warnings;
 
+# Hash to map cell letters to numbers used in the spreadsheet.
+my %letters = (
+	A => 0, B => 1, C => 2, D => 3, E => 4, F => 4, G => 4, H => 4, I => 4, J => 4,
+	K => 4, L => 4, M => 4, N => 4, O => 4, P => 4, Q => 4,
+);
+
 sub new {	#Need to check with Len if this is the proper way to do this.
 	my $class = shift;
 	my $self = {};
@@ -40,7 +46,8 @@ sub readcell {
 
 	#B3 translates to Row="2" Col="1"
 	#<gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell>
-	#
+	print $letters{A};
+
 }
 
 sub writecell {
