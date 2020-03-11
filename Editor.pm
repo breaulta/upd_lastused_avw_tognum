@@ -35,7 +35,12 @@ sub savefile {
 }
 
 sub readcell {
+	my $self = shift;
+	my $cell = shift;
 
+	#B3 translates to Row="2" Col="1"
+	#<gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell>
+	#
 }
 
 sub writecell {

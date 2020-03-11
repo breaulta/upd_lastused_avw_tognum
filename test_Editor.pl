@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 
+use lib '/home/lubuntu/proj';
 use Editor;
 
 my $editor = new Editor();
