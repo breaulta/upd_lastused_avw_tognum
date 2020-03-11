@@ -46,7 +46,11 @@ sub readcell {
 
 	#B3 translates to Row="2" Col="1"
 	#<gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell>
-	print $letters{A};
+	
+	#Split letter from number
+	#Dereference letter to number using %letters
+	#Find line that corresponds to cell
+	#read the contents and return them
 
 }
 
