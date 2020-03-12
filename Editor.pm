@@ -87,9 +87,12 @@ sub readcell {
 		#print $line;
 		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
 		#if( $line =~ /<gnm:Cell Row=\"$row\" Col=\"$column\" ValueType=\"\d+\">(\w+)<\/gnm\:Cell>/ ){
-		if( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/g ){
+		if( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
 			$data = $1;
-			print "data: $data\n";
+			print "Nonconditional data: $data\n";
+		} elsif ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>(.+)\<\/gnm\:Cell\>/ ){
+			$data = $1;
+			print "Conditional data: $data\n";
 		}
 	}
 	return $data;
