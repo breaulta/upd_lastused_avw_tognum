@@ -9,13 +9,12 @@ my %letters = (
 	K => 10, L => 11, M => 12, N => 13, O => 14, P => 15, Q => 16,
 );
 
-sub new {	#Need to check with Len if this is the proper way to do this.
-	#my $class = shift;
-	#my $self = {};
-	#bless $self, $class;
-	#return $self;
+sub new {
 	my ($class, $filename) = @_;
-	die "A gnumeric spreadsheet file is required for this constructor." if $filename eq "";
+	die "Specified file $filename doesn't appear to be gnumeric spreadsheet"
+		unless $filename =~ /(.+)\.gnumeric$/;
+	die "Specified file $filename doesn't exist!"
+		unless -e $filename;
 	my $self = bless { file => $filename, }, $class;
 	return $self;
 }
