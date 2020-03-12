@@ -63,6 +63,7 @@ sub savefile {
 sub readcell {
 	my $self = shift;
 	my $cell = shift;
+	my $data;
 
 	#B3 translates to Row="2" Col="1"
 	#<gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell>
@@ -80,9 +81,18 @@ sub readcell {
 
 	#Find line that corresponds to cell
 	#	open file associated with this object
-	
+	open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
 	#	Read in contents in form that can be regex'd
-	#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
+	while( my $line = <$fh> ){
+		#print $line;
+		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
+		#if( $line =~ /<gnm:Cell Row=\"$row\" Col=\"$column\" ValueType=\"\d+\">(\w+)<\/gnm\:Cell>/ ){
+		if( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/g ){
+			$data = $1;
+			print "data: $data\n";
+		}
+	}
+	return $data;
 	#	Read contents
 	#	Return contents	
 
