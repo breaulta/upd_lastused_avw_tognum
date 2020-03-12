@@ -3,22 +3,39 @@ package Editor;
 use strict;
 use warnings;
 
-# Hash to map cell letters to numbers used in the spreadsheet.
+# Hash to map cell letters to the corresponding numbers used by gnumeric spreadsheet.
 my %letters = (
 	A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G => 6, H => 7, I => 8, J => 9,
 	K => 10, L => 11, M => 12, N => 13, O => 14, P => 15, Q => 16,
 );
+my $temp_file = "current_working_temp_file";
 
 sub new {
 	my ($class, $filename) = @_;
-	die "Specified file $filename doesn't appear to be gnumeric spreadsheet"
-		unless $filename =~ /(.+)\.gnumeric$/;
+	die "Specified file $filename doesn't appear to be a gnumeric spreadsheet"
+		unless $filename =~ /.+\.gnumeric$/;
 	die "Specified file $filename doesn't exist!"
 		unless -e $filename;
-	my $self = bless { file => $filename, }, $class;
+	#https://perldoc.perl.org/functions/bless.html
+	#Instantiates the Class into the Object?
+	my $self = bless { 
+		filename => $filename, 
+	}, $class;
+	my $gnumeric_ss = $filename;
+	#
+	$gnumeric_ss =~ /(.+)\.gnumeric$/;
+	my $ss = $1;
+	my $gz_ss = "$1.gz";
+	#Convert file to type that is useable by perl.
+	#The constructor creates a temp file that is useable by perl and persists until (presumably) the object is deconstructed.
+	system("cp", $gnumeric_ss, $gz_ss) == 0 or die "System call failed: $?";
+	system("gunzip", $gz_ss) == 0 or die "System call failed: $?";
+	system("mv", $ss, $temp_file) == 0 or die "System call failed: $?";
+
 	return $self;
 }
 
+#Leaving this unneeded sub for reference for now.
 sub openfile {
 	my $self = shift;
 	my $gnumeric_ss = $self->{file};
@@ -63,6 +80,7 @@ sub readcell {
 
 	#Find line that corresponds to cell
 	#	open file associated with this object
+	
 	#	Read in contents in form that can be regex'd
 	#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
 	#	Read contents

@@ -9,6 +9,6 @@ use Editor;
 my $editor = new Editor('sample_spreadsheet.gnumeric');
 
 #$editor->openfile('sample_spreadsheet.gnumeric');
-$editor->openfile();
+#$editor->openfile();
 $editor->readcell('f8');
 
