@@ -10,6 +10,6 @@ my $editor = new Editor('sample_spreadsheet.gnumeric');
 
 #$editor->openfile('sample_spreadsheet.gnumeric');
 #$editor->openfile();
-my $read = $editor->readcell('n3');
+my $read = $editor->readcell('k4');
 print "Readcell returns: $read\n";
 

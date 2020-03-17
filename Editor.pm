@@ -3,6 +3,13 @@ package Editor;
 use strict;
 use warnings;
 
+#Needed for epoch calculation.
+use Date::Calc qw(:all);
+
+my $ss_epoch_year = 1899;
+my $ss_epoch_month = 12;
+my $ss_epoch_day = 30;
+
 # Hash to map cell letters to the corresponding numbers used by gnumeric spreadsheet.
 my %letters = (
 	A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G => 6, H => 7, I => 8, J => 9,
@@ -84,25 +91,44 @@ sub readcell {
 	open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
 	#	Read in contents in form that can be regex'd
 	while( my $line = <$fh> ){
-		#print $line;
 		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
-		#if( $line =~ /<gnm:Cell Row=\"$row\" Col=\"$column\" ValueType=\"\d+\">(\w+)<\/gnm\:Cell>/ ){
-		if( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
-			$data = $1;
-			print "Nonconditional data: $data\n";
+		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
+			print "Epoch Formatted data: $1\n";
+			my $date = _ss_num_to_date( $1 );
+			print "Date Formatted data: $date\n";
+			$data = $date;
 		} elsif ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>(.+)\<\/gnm\:Cell\>/ ){
+			# Data is held in $1
+			print "Other Conditional data: $1\n";
 			$data = $1;
-			print "Conditional data: $data\n";
+		} elsif( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
+			# Data is held in $1
+			print "Non-Conditional data: $1\n";
+			$data = $1;
 		}
 	}
 	return $data;
-	#	Read contents
-	#	Return contents	
-
 }
 
 sub writecell {
 
+}
+
+sub _ss_num_to_date {
+    my $num = shift;
+    #Number must be an integer.
+    die "Invalid spreadsheet date number" unless $num =~ m/^\d+$/;
+    my ($year,$month,$day) = Add_Delta_Days($ss_epoch_year,$ss_epoch_month,$ss_epoch_day,$num);
+    return "$month/$day/$year";
+
+}
+
+sub _ss_date_to_num {
+    my $date = shift;
+    #Date must be in m/d/yyyy format.
+    die "Invalid m/d/yyyy format" unless $date =~ m/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    my ($month, $day, $year) = ($1, $2, $3);
+    return Delta_Days($ss_epoch_year,$ss_epoch_month,$ss_epoch_day,$year,$month,$day);
 }
 
 1;
