@@ -93,25 +93,72 @@ sub readcell {
 	while( my $line = <$fh> ){
 		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
 		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
-			print "Epoch Formatted data: $1\n";
+			print "#$. Epoch Formatted data: $1\n";
 			my $date = _ss_num_to_date( $1 );
-			print "Date Formatted data: $date\n";
+			print "#$. Date Formatted data: $date\n";
 			$data = $date;
 		} elsif ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>(.+)\<\/gnm\:Cell\>/ ){
 			# Data is held in $1
-			print "Other Conditional data: $1\n";
+			print "#$. Other Conditional data: $1\n";
 			$data = $1;
 		} elsif( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
 			# Data is held in $1
-			print "Non-Conditional data: $1\n";
+			print "#$. Non-Conditional data: $1\n";
 			$data = $1;
 		}
 	}
+	close($fh);
 	return $data;
 }
 
 sub writecell {
 
+	my $self = shift;
+	my $cell = shift;
+	my $data = shift;
+
+	if ($data eq "") {
+		print "No data to write; deleting cell $cell\n";
+	}
+
+	#Split letter from number
+	$cell =~ /(\w)(\d+)/;
+	my $column = uc $1;	#Set everything to uppercase.
+	my $row = $2;
+	print "Reading user input- Col:$column, Row:$row\n";
+
+	#Dereference letter to number using %letters, rows start at 0 instead of 1.
+	$column = $letters{$column};
+	$row--;
+	print "Type used by gnumeric- Col:$column, Row:$row\n";
+
+	#Find line that corresponds to cell
+	#	open file associated with this object
+	open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
+	#	Read in contents in form that can be regex'd
+	#	Looking for line number to change.
+	my $changeline;
+	my $changeline_num;
+	while( my $line = <$fh> ){
+		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
+		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
+			#print "#$. Epoch Formatted data: $1\n";
+			#my $date = _ss_num_to_date( $1 );
+			#print "#$. Date Formatted data: $date\n";
+			#$data = $date;
+			die "Data format \"mm/dd/yyy\" expected for this cell."
+				unless $data =~ /^\d\d\/\d\d\/\d\d\d\d$/;
+			my $epoch = _ss_date_to_num($data);
+		} elsif ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>(.+)\<\/gnm\:Cell\>/ ){
+			# Data is held in $1
+			#print "#$. Other Conditional data: $1\n";
+			#$data = $1;
+		} elsif( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
+			# Data is held in $1
+			#print "#$. Non-Conditional data: $1\n";
+			#$data = $1;
+		}
+	}
 }
 
 sub _ss_num_to_date {
