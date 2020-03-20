@@ -135,30 +135,29 @@ sub writecell {
 	#Find line that corresponds to cell
 	#	open file associated with this object
 	open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
+	#	from: https://stackoverflow.com/questions/2278527/how-do-i-replace-lines-in-the-middle-of-a-file-with-perl
+	#	Since perl doesn't provide random access to lines, we must create a new file.
+	open( my $fhout, ">", "$temp_file.out") or die "Can't open $temp_file.out: $!";
 	#	Read in contents in form that can be regex'd
-	#	Looking for line number to change.
-	my $changeline;
-	my $changeline_num;
-	while( my $line = <$fh> ){
+	while(  <$fh> ){
 		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
-		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
-			#print "#$. Epoch Formatted data: $1\n";
-			#my $date = _ss_num_to_date( $1 );
-			#print "#$. Date Formatted data: $date\n";
-			#$data = $date;
+		if ( /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
 			die "Data format \"mm/dd/yyy\" expected for this cell."
 				unless $data =~ /^\d\d\/\d\d\/\d\d\d\d$/;
 			my $epoch = _ss_date_to_num($data);
-		} elsif ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>(.+)\<\/gnm\:Cell\>/ ){
-			# Data is held in $1
-			#print "#$. Other Conditional data: $1\n";
-			#$data = $1;
-		} elsif( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
-			# Data is held in $1
-			#print "#$. Non-Conditional data: $1\n";
-			#$data = $1;
+			s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>)(.+)(\<\/gnm\:Cell\>)/$1$epoch$3/;
+		} else {
+			s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data$3/;
+
+			s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data$3/;
 		}
+		# Print line to outfile after changes have been made.
+		print $fhout $_;
 	}
+	close $fh;
+	close $fhout;
+	system("mv", "$temp_file.out", $temp_file) == 0 or die "System call failed: $?";
+	
 }
 
 sub _ss_num_to_date {
