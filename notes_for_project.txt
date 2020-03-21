@@ -12,3 +12,16 @@ Build an object oriented package with methods
 -writecell("B3", "new cell content")
 
 Once complete, look into creating cpan package that others could use.
+
+
+STUFF TO GET FROM AIRVOICE ACCOUNT PAGE.
+From "Account Information"
+"Service Plan"
+"Cash Balance"
+"Airtime Exp Date"
+"Data"
+
+From "Call Details"
+Last call date (either incoming or outgoing) from Call Records
+Last text date (OUTGOING ONLY) from SMS Records
+Last data use date from Data Records.
