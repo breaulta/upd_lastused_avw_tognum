@@ -1,3 +1,4 @@
 *.sw?
 copyof_sample_spreadsheet
 current_working_temp_file
+*.html
