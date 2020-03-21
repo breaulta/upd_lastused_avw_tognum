@@ -31,6 +31,7 @@ $mech->submit_form(
 #Determine account number.
 die "Cannot find account number!" unless $mech->text() =~ m/Your associated account\(s\) are: (\d+)/;
 my $account_number = $1;
+print "Found account number => Successfully logged into system!\n";
 
 #Fetch call details text.
 $mech->get($base_url . "/my-account/call-details?a=" . $account_number);
@@ -43,9 +44,9 @@ close $call_file;
 #	Last text date (OUTGOING ONLY) from SMS Records
 #	Last data use date from Data Records.
 
-
+sleep(1);	#Sleep 1 second as to not get flagged for ddos.
 #Fetch account profile text.
-$mech->get($base_url . "/my-account/account-profile?a=" . $account_number);
+$mech->get($base_url . "/my-account/account-information?a=" . $account_number);
 my $account_profile = $mech->content( decoded_by_headers => 1 );
 open (my $profile_file, ">", "account_profile.html");
 print $profile_file $account_profile;
