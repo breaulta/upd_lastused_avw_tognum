@@ -5,7 +5,7 @@ use strict;
 use WWW::Mechanize;
 
 my $base_url = 'https://www.airvoicewireless.com';
-my $username = 'phoenixphoneav87@mailinator.com';
+my $username = 'YOUR E-MAIL HERE';
 
 #Get password.
 system ("stty", "-echo");
