@@ -87,20 +87,16 @@ while( <$call_fh> ){
 		$last_call_details{'data'} = $1;
 		$data_flag = 0;	
 	}
-}	
-
+}
+close $call_fh;
 print "Results of processing $saved_call_details:\nlast call: $last_call_details{'call'}\nlast text: $last_call_details{'text'}\nlast data: $last_call_details{'data'}\n";
-
-
-
-
 
 sleep(1);	#Sleep 1 second as to not get flagged for ddos.
 my $saved_account_profile = "account_profile.html";
 #Fetch account profile text.
 $mech->get($base_url . "/my-account/account-information?a=" . $account_number);
 my $account_profile = $mech->content( decoded_by_headers => 1 );
-open (my $profile_file, ">", $saved_account_profile) or die "Can't open $saved_call_details: $!";
+open (my $profile_file, ">", $saved_account_profile) or die "Can't open $saved_account_profile $!";
 print $profile_file $account_profile;
 close $profile_file;
 # Use regex to find in account_profile.html
@@ -115,6 +111,45 @@ my %profile_data = (
 	expires => '',
 	data => '',
 );
+my $plan_flag = 0;	# Off.
+my $balance_flag = 0;
+my $expires_flag = 0;
+$data_flag = 0;
+open( my $profile_fh, "<", $saved_account_profile) or die "Can't open $saved_account_profile $!";
+while( <$profile_fh> ){
+	# Using an if-block filter to find datas.
+	if( $plan_flag && /class\=\"blue\"\>(.*)\<\/span/ ){
+		$profile_data{'plan'} = $1;
+		$plan_flag = 0;
+		next;
+	}elsif( $balance_flag && /\<td\>\$(.*)\</ ){
+		$profile_data{'balance'} = $1;
+		$balance_flag = 0;
+		next;
+	}elsif( $expires_flag && /\<td\>(.*)\</ ){
+		$profile_data{'expires'} = $1;
+		$expires_flag = 0;
+		next;
+	}elsif( $data_flag && /\<td\>(.*)\</ ){
+		$profile_data{'data'} = $1;
+		$data_flag = 0;
+		next;
+	}elsif( /Service Plan/ ){
+		$plan_flag = 1;
+		next;
+	}elsif( /Cash Balance/ ){
+		$balance_flag = 1;
+		next;
+	}elsif( /Airtime Exp Date/ ){
+		$expires_flag = 1;
+		next;
+	}elsif( /\<td\>Data\<\/td\>/ ){
+		$data_flag = 1;
+	}
+}
+close $profile_fh;
+print "Results of processing $saved_account_profile\nService Plan: $profile_data{'plan'}\nCash Balance: $profile_data{'balance'}\nAirtime Exp Date: $profile_data{'expires'}\nData: $profile_data{'data'}\n";
+
 
 
 #WORKS!
