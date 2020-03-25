@@ -130,7 +130,7 @@ sub writecell {
 	#	Since perl doesn't provide random access to lines, we must create a new file.
 	open( my $fhout, ">", "$temp_file.out") or die "Can't open $temp_file.out: $!";
 	#	
-	while(  <$fh> ){
+	while( <$fh> ){
 		#	
 		if ( /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.*)\<\/gnm\:Cell\>/ ){
 			die "Data format \"mm/dd/yyy\" expected for this cell."
