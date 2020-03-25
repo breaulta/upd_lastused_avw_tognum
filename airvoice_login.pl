@@ -50,17 +50,57 @@ my %last_call_details = (
 	text => '',
 	data => '',
 );
+my $call_flag = 0;	# Off.
+my $text_flag = 0;
+my $data_flag = 0;
+my $outgoing_flag = 0;
 open( my $call_fh, "<", $saved_call_details) or die "Can't open $saved_call_details: $!";
 while( <$call_fh> ){
-
+	# Using an if-block filter to find datas.
+	if( $outgoing_flag && /class\=\"cell date\"\>(.*)\</ ){
+		# Grab the data in the line after 'Outgoing' was found.
+		$last_call_details{'text'} = $1;
+		$outgoing_flag = 0;
+		$text_flag = 0;
+		next;
+	}elsif( !$call_flag && /Call Records/ ){
+		# We've entered the Call Records section, we can now search for the first call.
+		$call_flag = 1;
+		next;
+	}elsif( !$text_flag && /SMS Records/ ){
+		# We've entered the SMS Records section, we can now search for the last outgoing text (find 'Outgoing').
+		$text_flag = 1;
+		next;
+	}elsif( $text_flag && /Outgoing/ ){
+		# Finding the first instance of Outgoing in the SMS section should make the very next line where our data is.
+		$outgoing_flag = 1;
+		next;
+	}elsif( !$data_flag && /MMS Records/ ){
+		# We've entered the SMS Records section, we can now search for the last outgoing text.
+		$data_flag = 1;
+		next;
+	}elsif( $call_flag && /class\=\"cell date\"\>(.*)\</ ){
+		$last_call_details{'call'} = $1;
+		$call_flag = 0;	
+		next;
+	}elsif( $data_flag && /class\=\"cell date\"\>(.*)\</ ){
+		$last_call_details{'data'} = $1;
+		$data_flag = 0;	
+	}
 }	
+
+print "Results of processing $saved_call_details:\nlast call: $last_call_details{'call'}\nlast text: $last_call_details{'text'}\nlast data: $last_call_details{'data'}\n";
+
+
+
+
 
 sleep(1);	#Sleep 1 second as to not get flagged for ddos.
 my $saved_account_profile = "account_profile.html";
 #Fetch account profile text.
 $mech->get($base_url . "/my-account/account-information?a=" . $account_number);
 my $account_profile = $mech->content( decoded_by_headers => 1 );
-open (my $profile_file, ">", $saved_account_profile);
+open (my $profile_file, ">", $saved_account_profile) or die "Can't open $saved_call_details: $!";
 print $profile_file $account_profile;
 close $profile_file;
 # Use regex to find in account_profile.html
