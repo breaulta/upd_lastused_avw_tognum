@@ -70,12 +70,12 @@ sub readcell {
 	$cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
 	my $row = $2;
-	print "Reading user input- Col:$column, Row:$row\n";
+#	print "Reading user input- Col:$column, Row:$row\n";
 
 	#Dereference letter to number using %letters, rows start at 0 instead of 1.
 	$column = $letters{$column};
 	$row--;
-	print "Type used by gnumeric- Col:$column, Row:$row\n";
+#	print "Type used by gnumeric- Col:$column, Row:$row\n";
 
 	#Find line that corresponds to cell
 	#	open file associated with this object

@@ -4,18 +4,19 @@ use strict;
 use warnings;
 
 # Required for linux.
-use lib '/home/lubuntu/proj';
+use lib '/home/newputer/avw-proj';
 use Editor;
 
 my $editor = new Editor('sample_spreadsheet.gnumeric');
 
-my $cell = 'k5';
+my $cell = 'e8';
 my $data = '12/20/1988';
 my $filename = 'test_savefile.gnumeric';
 
 #$editor->openfile('sample_spreadsheet.gnumeric');
 #$editor->openfile();
 my $read = $editor->readcell($cell);
+print "read: $read\n";
 #print "Readcell returns: $read\n";
 #$editor->writecell($cell, $data);
 #print "Attempting to write cell $cell with data:$data\n";
