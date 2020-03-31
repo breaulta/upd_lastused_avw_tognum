@@ -17,7 +17,8 @@ Once complete, look into creating cpan package that others could use.
 STUFF TO GET FROM AIRVOICE ACCOUNT PAGE.
 From "Account Information"
 "Service Plan"
-"Cash Balance"
+"Cash Balance" - only necessary for pay as you go plans
+
 "Airtime Exp Date"
 "Data"
 
@@ -25,3 +26,7 @@ From "Call Details"
 Last call date (either incoming or outgoing) from Call Records
 Last text date (OUTGOING ONLY) from SMS Records
 Last data use date from Data Records.
+
+For a given login (email), pull data from avw and populate the corresponding row.
+
+
