@@ -16,19 +16,19 @@ my $mech = WWW::Mechanize->new();
 my $i = 4;
 my $cell;
 my $email;
-my @emails;
+my %emails;
+# while($email){
 while(1){
 	$cell = 'E' . $i;
 	$email = $editor->readcell($cell);
 	# We have past the last account, exit loop.
 	if( !$email ){ last;}
-	push @emails, $email;
+	#push @emails, $email;
+	$emails{$i} = $email;
 	print $i . ' ' . "$cell\n";
 	$i++;
 }
 
-print @emails;
-print "\n";
 my %data = (
 	call => '',
 	text => '',
@@ -40,7 +40,7 @@ my %data = (
 );
 my $saved_call_details = "call_details.html";
 my $saved_account_profile = "account_profile.html";
-foreach my $acc (@emails){
+foreach my $row (keys %emails){
 	# Get password
 	system ("stty", "-echo");
 	print "Enter password: \n";
@@ -55,7 +55,7 @@ foreach my $acc (@emails){
 		#form_number => 1,
 		fields      => {
 			form      => 'login',
-			email     => $acc,
+			email     => $emails{$row},
 			password  => $password,
 		}
 	);
@@ -82,6 +82,27 @@ foreach my $acc (@emails){
 	extract_avw_data(\%data);
 	print "data: $data{'data'}\n";
 	print "ldata: $data{'ldata'}\n";
+
+	# call		M
+	# last text	N
+	#last data	O
+	#plan		F
+	#balance	G
+	#expires	undef
+	#data left	P
+	$cell = 'M' . $row;
+	$editor->writecell($cell, $data{'call'});
+	$cell = 'N' . $row;
+	$editor->writecell($cell, $data{'text'});
+	$cell = 'O' . $row;
+	$editor->writecell($cell, $data{'ldata'});
+	$cell = 'F' . $row;
+	$editor->writecell($cell, $data{'plan'});
+	$cell = 'G' . $row;
+	$editor->writecell($cell, $data{'balance'});
+	$cell = 'P' . $row;
+	$editor->writecell($cell, $data{'data'});
+	$editor->savefile('test.gnumeric');
 }
 
 sub extract_avw_data {
