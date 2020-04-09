@@ -63,7 +63,7 @@ sub readcell {
 	my $cell = shift;
 	my $data;
 
-	#B3 translates to Row="2" Col="1"
+	#B3 translates to Col="1 "Row="2"
 	#<gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell>
 	
 	#Split letter from number
@@ -75,12 +75,11 @@ sub readcell {
 	#Dereference letter to number using %letters, rows start at 0 instead of 1.
 	$column = $letters{$column};
 	$row--;
-#	print "Type used by gnumeric- Col:$column, Row:$row\n";
 
 	#Find line that corresponds to cell
-	#	open file associated with this object
+	#Open file associated with this object
 	open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
-	#	Read in contents in form that can be regex'd
+	#Read in contents in form that can be regex'd
 	while( my $line = <$fh> ){
 		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
 		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
@@ -97,6 +96,8 @@ sub readcell {
 			#print "#$. Non-Conditional data: $1\n";
 			$data = $1;
 		}
+		#Exit loop so that hidden historical gnumeric cell data doesn't overwrite visible cell data stored in $data.
+		last if $line =~ m/<\/gnm:Cells>/;
 	}
 	close($fh);
 	return $data;
