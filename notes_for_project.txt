@@ -29,4 +29,5 @@ Last data use date from Data Records.
 
 For each login (email) in spreadsheet, pull data from avw and populate the corresponding row.
 
-
+Last use date: use most recent date.
+Only pay as you go need balance remaining.
