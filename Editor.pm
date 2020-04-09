@@ -67,13 +67,15 @@ sub readcell {
 	#<gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell>
 	
 	#Split letter from number
+# Wrap this in an if statement to make sure it completes properly.
 	$cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
 	my $row = $2;
 #	print "Reading user input- Col:$column, Row:$row\n";
 
 	#Dereference letter to number using %letters, rows start at 0 instead of 1.
-	$column = $letters{$column};
+	my $gnu_column = $letters{$column};
+	# gnumeric uses 0 for row 1.
 	$row--;
 
 	#Find line that corresponds to cell
@@ -82,37 +84,36 @@ sub readcell {
 	#Read in contents in form that can be regex'd
 	while( my $line = <$fh> ){
 		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
-		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
+		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
 			#print "#$. Epoch Formatted data: $1\n";
-			my $date = _ss_num_to_date( $1 );
+			return _ss_num_to_date( $1 );
 			#print "#$. Date Formatted data: $date\n";
-			$data = $date;
-		} elsif ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>(.+)\<\/gnm\:Cell\>/ ){
+		} elsif ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>(.+)\<\/gnm\:Cell\>/ ){
 			# Data is held in $1
 			#print "#$. Other Conditional data: $1\n";
-			$data = $1;
-		} elsif( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
+			return $1;
+		} elsif( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
 			# Data is held in $1
 			#print "#$. Non-Conditional data: $1\n";
-			$data = $1;
+			return $1;
 		}
 		#Exit loop so that hidden historical gnumeric cell data doesn't overwrite visible cell data stored in $data.
-		last if $line =~ m/<\/gnm:Cells>/;
+		#last if $line =~ m/<\/gnm:Cells>/;
 	}
-	close($fh);
-	return $data;
+	#close($fh);
+	#return $data;
 }
 
 sub writecell {
-
 	my $self = shift;
 	my $cell = shift;
 	my $data = shift;
 
+	# Len suggests to check for undef data => kill program.
 	if ($data eq "") {
 		print "No data to write; deleting cell $cell\n";
 	}
-
+# write a sub for converting cell names to gnumeric cell format.
 	#Split letter from number
 	$cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
@@ -120,7 +121,7 @@ sub writecell {
 	#print "Reading user input- Col:$column, Row:$row\n";
 
 	#Dereference letter to number using %letters, rows start at 0 instead of 1.
-	$column = $letters{$column};
+	my $gnu_column = $letters{$column};
 	$row--;
 	#print "Type used by gnumeric- Col:$column, Row:$row\n";
 
@@ -133,16 +134,16 @@ sub writecell {
 	#	
 	while( <$fh> ){
 		#	
-		if ( /\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.*)\<\/gnm\:Cell\>/ ){
+		if ( /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.*)\<\/gnm\:Cell\>/ ){
 			die "Data format \"mm/dd/yyy\" expected for this cell."
 				unless $data =~ /^\d\d\/\d\d\/\d\d\d\d$/;
 			my $epoch = _ss_date_to_num($data);
-			s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>)(.*)(\<\/gnm\:Cell\>)/$1$epoch$3/;
-		} elsif( s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>)(.*)(\<\/gnm\:Cell\>)/$1$data$3/){print "Conditional\n";}
-		elsif( s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$column\" ValueType\=\"\d+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data$3/){print "nonconditional\n";}
+			s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>)(.*)(\<\/gnm\:Cell\>)/$1$epoch$3/;
+		} elsif( s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>)(.*)(\<\/gnm\:Cell\>)/$1$data$3/){print "Conditional\n";}
+		elsif( s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data$3/){print "nonconditional\n";}
 		elsif( /\<\/gnm\:Cells\>/ ){
 			# Did not find a line to change (cell is empty): create line at the end of gnm:Cell block.
-			print $fhout "<gnm:Cell Row=\"$row\" Col=\"$column\" ValueType=\"60\">$data</gnm:Cell>\n";
+			print $fhout "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>\n";
 		}
 		# Print line to outfile after changes have been made.
 		print $fhout $_;
