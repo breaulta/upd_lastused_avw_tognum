@@ -83,9 +83,12 @@ sub get_account_data {
 	unless ($mech->text() =~ m/Your associated account\(s\) are: (\d+)/){
 		die "Cannot aquire account number!\n" if $login_attempt_num > 2;
 		$login_attempt_num++;
+		print "Couldn't find account number. Attempting pass number: $login_attempt_num\n";
 		return get_account_data($username, $account_pass, $login_attempt_num);
 	}
 	my $account_number = $1;
+	#Let the user know how the script is progressing.
+	print "Successfully logged in! Account number: $account_number\n";
 
 	#Fetch call details data for account.
 	$mech->get($base_url . "/my-account/call-details?a=" . $account_number);
@@ -94,6 +97,7 @@ sub get_account_data {
 	unless ($call_details_html =~ m/Call Records/){
 		die "Call details page failed to load for account $username\n" if $login_attempt_num > 2;
 		$login_attempt_num++;
+		print "Couldn't call details page. Attempting pass number: $login_attempt_num\n";
 		return get_account_data($username, $account_pass, $login_attempt_num);
 	}
 	my @call_details_html = split /\n/, $call_details_html;
@@ -145,6 +149,7 @@ sub get_account_data {
 	unless ($account_info_html =~ m/Airtime Exp Date/){
 		die "Account information page failed to load for account $username\n" if $login_attempt_num > 2;
 		$login_attempt_num++;
+		print "Couldn't account information page. Attempting pass number: $login_attempt_num\n";
 		return get_account_data($username, $account_pass, $login_attempt_num);
 	}
 	$phone_fields{'plan_type'} = $1 if $account_info_html =~ m/"PlanName":"([^"]+)"/;

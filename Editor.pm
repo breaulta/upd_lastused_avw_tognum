@@ -148,28 +148,31 @@ sub writecell {
 	#	
 #	while( <$fh> ){
 	#Keep track of the current index of the array.
-	my $i = 0;
-	foreach (@temp_file){
-		#	
-		if ( /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.*)\<\/gnm\:Cell\>/ ){
+	#foreach (@temp_file){
+	for( my $i = 0; $i < scalar @temp_file; $i++){
+		my $line = $temp_file[$i];
+		if ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.*)\<\/gnm\:Cell\>/ ){
 			die "Data format \"mm/dd/yyy\" expected for this cell."
 				unless $data =~ /^\d\d\/\d\d\/\d\d\d\d$/;
 			my $epoch = _ss_date_to_num($data);
-			s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>)(.*)(\<\/gnm\:Cell\>)/$1$epoch$3/;
-		} elsif( s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>)(.*)(\<\/gnm\:Cell\>)/$1$data$3/){print "Conditional\n";}
-		elsif( s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data$3/){print "nonconditional\n";}
-		elsif( /\<\/gnm\:Cells\>/ ){
+			$line =~ s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>)(.*)(\<\/gnm\:Cell\>)/$1$epoch$3/;
+		} elsif( $line =~ s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>)(.*)(\<\/gnm\:Cell\>)/$1$data$3/){
+			print "Conditional\n";
+		}elsif( $line =~ s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data$3/){
+			print "nonconditional\n";
+		}elsif( $line =~ /\<\/gnm\:Cells\>/ ){
 			# Did not find a line to change (cell is empty): create line at the end of gnm:Cell block.
 			#print $fhout "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>\n";
 			#print $_ "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>\n";
 			my $num = $i - 1;
 			#my $line = "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60    \">$data</gnm:    Cell>":
-			splice @temp_file, $num, 0, "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:    Cell>";
+			print "splicing line $num\n";
+			splice @temp_file, $num, 0, "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>";
+			$i++;
 			#splice @temp_file, $num, 0, $line;
 		}
 		# Print line to outfile after changes have been made.
 #		print $fhout $_;
-		$i++;
 	}
 	#close $fh;
 	#close $fhout;
