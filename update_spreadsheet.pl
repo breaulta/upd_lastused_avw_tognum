@@ -6,6 +6,8 @@ use strict;
 
 #Use home-built Gnumeric spreadsheet editing module.
 use lib '/home/portal/testing/';
+#Aaron's lib for testing.
+#use lib '/home/newputer/avw-proj';
 use Editor;
 #For logging into Airvoice Wireless accounts.
 use WWW::Mechanize;
@@ -24,6 +26,7 @@ my %ss_field_to_letter = (
 
 #Open spreadsheet for reading/writing.
 my $editor = new Editor('phone_plans.gnumeric');
+#Used for testing.
 #my $editor = new Editor('sample_spreadsheet.gnumeric');
 
 #Get airvoice password.
