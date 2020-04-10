@@ -10,12 +10,13 @@ my $ss_epoch_year = 1899;
 my $ss_epoch_month = 12;
 my $ss_epoch_day = 30;
 
-# Hash to map cell letters to the corresponding numbers used by gnumeric spreadsheet.
-my %letters = (
+# Hash to map cell cell_to_gnu_map to the corresponding numbers used by gnumeric spreadsheet.
+my %cell_to_gnu_map = (
 	A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G => 6, H => 7, I => 8, J => 9,
 	K => 10, L => 11, M => 12, N => 13, O => 14, P => 15, Q => 16,
 );
-my $temp_file = "current_working_temp_file";
+#my $temp_file = "current_working_temp_file";
+my @temp_file;
 
 sub new {
 	my ($class, $filename) = @_;
@@ -34,10 +35,14 @@ sub new {
 	my $ss = $1;
 	my $gz_ss = "$1.gz";
 	#Convert file to type that is useable by perl.
-	#The constructor creates a temp file that is useable by perl and persists until (presumably) the object is deconstructed.
+	#Read file into global array for use in this instance of object.
 	system("cp", $gnumeric_ss, $gz_ss) == 0 or die "System call failed: $?";
 	system("gunzip", $gz_ss) == 0 or die "System call failed: $?";
-	system("mv", $ss, $temp_file) == 0 or die "System call failed: $?";
+	#system("mv", $ss, $temp_file) == 0 or die "System call failed: $?";
+my $temp_fh;
+	open ($temp_fh, "<", $ss) or die "Can't open $temp_fh: $!";
+	chomp(@temp_file = <$temp_fh>);
+	close $temp_fh;
 
 	return $self;
 }
@@ -53,8 +58,16 @@ sub savefile {
 	die "Specified file $filename doesn't appear to be a gnumeric spreadsheet"
 		unless $filename =~ /.+\.gnumeric$/;
 
-	system("gzip", $temp_file) == 0 or die "System call failed: $?";
-	system("mv", "$temp_file.gz", $filename) == 0 or die "System call failed: $?";
+	#system("gzip", $temp_file) == 0 or die "System call failed: $?";
+	#system("mv", "$temp_file.gz", $filename) == 0 or die "System call failed: $?";
+	#Print each line of @temp_file into a file to save.
+my $fh;
+	open ($fh, ">", $filename) or die "Can't open $fh: $!";
+	#open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
+	foreach(@temp_file){
+		print $fh "$_\n";
+	}
+	close $fh;
 
 }
 
@@ -73,16 +86,17 @@ sub readcell {
 	my $row = $2;
 #	print "Reading user input- Col:$column, Row:$row\n";
 
-	#Dereference letter to number using %letters, rows start at 0 instead of 1.
-	my $gnu_column = $letters{$column};
+	#Dereference letter to number using %cell_to_gnu_map, rows start at 0 instead of 1.
+	my $gnu_column = $cell_to_gnu_map{$column};
 	# gnumeric uses 0 for row 1.
 	$row--;
 
 	#Find line that corresponds to cell
 	#Open file associated with this object
-	open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
+	#open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
 	#Read in contents in form that can be regex'd
-	while( my $line = <$fh> ){
+	#while( my $line = <$fh> ){
+	foreach my $line (@temp_file){
 		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
 		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
 			#print "#$. Epoch Formatted data: $1\n";
@@ -120,19 +134,22 @@ sub writecell {
 	my $row = $2;
 	#print "Reading user input- Col:$column, Row:$row\n";
 
-	#Dereference letter to number using %letters, rows start at 0 instead of 1.
-	my $gnu_column = $letters{$column};
+	#Dereference letter to number using %cell_to_gnu_map, rows start at 0 instead of 1.
+	my $gnu_column = $cell_to_gnu_map{$column};
 	$row--;
 	#print "Type used by gnumeric- Col:$column, Row:$row\n";
 
 	#Find line that corresponds to cell
 	#	open file associated with this object
-	open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
+	#open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
 	#	from: https://stackoverflow.com/questions/2278527/how-do-i-replace-lines-in-the-middle-of-a-file-with-perl
 	#	Since perl doesn't provide random access to lines, we must create a new file.
-	open( my $fhout, ">", "$temp_file.out") or die "Can't open $temp_file.out: $!";
+#	open( my $fhout, ">", "$temp_file.out") or die "Can't open $temp_file.out: $!";
 	#	
-	while( <$fh> ){
+#	while( <$fh> ){
+	#Keep track of the current index of the array.
+	my $i = 0;
+	foreach (@temp_file){
 		#	
 		if ( /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.*)\<\/gnm\:Cell\>/ ){
 			die "Data format \"mm/dd/yyy\" expected for this cell."
@@ -143,15 +160,21 @@ sub writecell {
 		elsif( s/(\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data$3/){print "nonconditional\n";}
 		elsif( /\<\/gnm\:Cells\>/ ){
 			# Did not find a line to change (cell is empty): create line at the end of gnm:Cell block.
-			print $fhout "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>\n";
+			#print $fhout "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>\n";
+			#print $_ "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>\n";
+			my $num = $i - 1;
+			#my $line = "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60    \">$data</gnm:    Cell>":
+			splice @temp_file, $num, 0, "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:    Cell>";
+			#splice @temp_file, $num, 0, $line;
 		}
 		# Print line to outfile after changes have been made.
-		print $fhout $_;
+#		print $fhout $_;
+		$i++;
 	}
-	close $fh;
-	close $fhout;
-	system("rm", $temp_file) == 0 or die "System call failed: $?";
-	system("mv", "$temp_file.out", $temp_file) == 0 or die "System call failed: $?";
+	#close $fh;
+	#close $fhout;
+	#system("rm", $temp_file) == 0 or die "System call failed: $?";
+	#system("mv", "$temp_file.out", $temp_file) == 0 or die "System call failed: $?";
 	
 }
 
