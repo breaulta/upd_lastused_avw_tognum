@@ -38,8 +38,7 @@ sub new {
 	#Read file into global array for use in this instance of object.
 	system("cp", $gnumeric_ss, $gz_ss) == 0 or die "System call failed: $?";
 	system("gunzip", $gz_ss) == 0 or die "System call failed: $?";
-	#system("mv", $ss, $temp_file) == 0 or die "System call failed: $?";
-my $temp_fh;
+	my $temp_fh;
 	open ($temp_fh, "<", $ss) or die "Can't open $temp_fh: $!";
 	chomp(@temp_file = <$temp_fh>);
 	close $temp_fh;
@@ -58,10 +57,7 @@ sub savefile {
 	die "Specified file $filename doesn't appear to be a gnumeric spreadsheet"
 		unless $filename =~ /.+\.gnumeric$/;
 
-	#system("gzip", $temp_file) == 0 or die "System call failed: $?";
-	#system("mv", "$temp_file.gz", $filename) == 0 or die "System call failed: $?";
-	#Print each line of @temp_file into a file to save.
-my $fh;
+	my $fh;
 	open ($fh, ">", $filename) or die "Can't open $fh: $!";
 	#open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
 	foreach(@temp_file){
