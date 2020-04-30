@@ -76,46 +76,30 @@ sub readcell {
 	my $cell = shift;
 	my $data;
 
-	#B3 translates to Col="1 "Row="2"
-	#<gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell>
-	
 	#Split letter from number
-# Wrap this in an if statement to make sure it completes properly.
-	$cell =~ /(\w)(\d+)/;
+	die "readcell call not executed properly: Failed to split cell index letter from number."
+		unless $cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
 	my $row = $2;
-#	print "Reading user input- Col:$column, Row:$row\n";
-
 	#Dereference letter to number using %cell_to_gnu_map, rows start at 0 instead of 1.
 	my $gnu_column = $cell_to_gnu_map{$column};
 	# gnumeric uses 0 for row 1.
 	$row--;
 
-	#Find line that corresponds to cell
-	#Open file associated with this object
-	#open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
-	#Read in contents in form that can be regex'd
-	#while( my $line = <$fh> ){
+	# Using an if block filter, read through the current file and return the format found first.
 	foreach my $line (@temp_file){
-		#	Loop through lines until <gnm:Cell Row="2" Col="1" ValueType="60">Number</gnm:Cell> is found.
-		if ($line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>(.+)\<\/gnm\:Cell\>/ ){
-			#print "#$. Epoch Formatted data: $1\n";
+		# The date type of line also has a ValueType and ValueFormat,
+		# but no other format has m/d/yyyy format: take it first.
+		if( $line =~ /Row..$row. Col..$gnu_column.+\"m\/d\/yyyy\"\>(.+)\</ ){
 			return _ss_num_to_date( $1 );
-			#print "#$. Date Formatted data: $date\n";
-		} elsif ( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>(.+)\<\/gnm\:Cell\>/ ){
-			# Data is held in $1
-			#print "#$. Other Conditional data: $1\n";
+		# Take the conditinally formatted cell next.
+		}elsif( $line =~ /Row..$row. Col..$gnu_column.+ValueFormat..\S+..(.+)\</ ){
 			return $1;
-		} elsif( $line =~ /\<gnm\:Cell Row\=\"$row\" Col\=\"$gnu_column\" ValueType\=\"\d+\"\>(.+)\<\/gnm\:Cell\>/ ){
-			# Data is held in $1
-			#print "#$. Non-Conditional data: $1\n";
+		# We've run out of special types; just find the cell and return its contents.
+		}elsif( $line =~ /Row..$row. Col..$gnu_column.+ValueType..\d+..(.+)\</ ){
 			return $1;
 		}
-		#Exit loop so that hidden historical gnumeric cell data doesn't overwrite visible cell data stored in $data.
-		#last if $line =~ m/<\/gnm:Cells>/;
 	}
-	#close($fh);
-	#return $data;
 }
 
 sub writecell {
