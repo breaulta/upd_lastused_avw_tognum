@@ -64,35 +64,33 @@ sub savefile {
 		print $fh "$_\n";
 	}
 	close $fh;
-
 }
 
 sub readcell {
 	my $self = shift;
 	my $cell = shift;
-	my $data;
 
 	#Split letter from number
 	die "readcell call not executed properly: Failed to split cell index letter from number."
 		unless $cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
-	my $row = $2;
-	#Dereference letter to number using %cell_to_gnu_map, rows start at 0 instead of 1.
-	my $gnu_column = $cell_to_gnu_map{$column};
-	# gnumeric uses 0 for row 1.
-	$row--;
+	my $cell_row = $2;
+	#Dereference letter to number using %cell_to_gnu_map
+	my $cell_column = $cell_to_gnu_map{$column};
+	#Rows start at 0 in the gnu spreadsheet; decrement to align.
+	$cell_row--;
 
 	# Using an if block filter, read through the current file and return the format found first.
 	foreach my $line (@temp_file){
 		# The date type of line also has a ValueType and ValueFormat,
 		# but no other format has m/d/yyyy format: take it first.
-		if( $line =~ /Row..$row. Col..$gnu_column.+\"m\/d\/yyyy\"\>(.+)\</ ){
+		if( $line =~ /Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(.+)\</ ){
 			return _ss_num_to_date( $1 );
 		# Take the conditinally formatted cell next.
-		}elsif( $line =~ /Row..$row. Col..$gnu_column.+ValueFormat..\S+..(.+)\</ ){
+		}elsif( $line =~ /Row..$cell_row. Col..$cell_column.+ValueFormat..\S+..(.+)\</ ){
 			return $1;
 		# We've run out of special types; just find the cell and return its contents.
-		}elsif( $line =~ /Row..$row. Col..$gnu_column.+ValueType..\d+..(.+)\</ ){
+		}elsif( $line =~ /Row..$cell_row. Col..$cell_column.+ValueType..\d+..(.+)\</ ){
 			return $1;
 		}
 	}
@@ -101,40 +99,41 @@ sub readcell {
 sub writecell {
 	my $self = shift;
 	my $cell = shift;
-	my $data = shift;
+	my $data_to_write = shift;
 
 	die "writecell call received undefined input!"
-		unless defined $data;
-	if ($data eq "") {
+		unless defined $data_to_write;
+	if ($data_to_write eq "") {
 		print "No data to write; deleting cell $cell\n";
 	}
 	#Split letter from number
 	die "readcell call not executed properly: Failed to split cell index letter from number."
 		unless $cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
-	my $row = $2;
-	#Dereference letter to number using %cell_to_gnu_map, rows start at 0 instead of 1.
-	my $gnu_column = $cell_to_gnu_map{$column};
-	$row--;
-	my $endcell = '</gnm:Cell>';
+	my $cell_row = $2;
+	#Dereference letter to number using %cell_to_gnu_map
+	my $cell_column = $cell_to_gnu_map{$column};
+	#Rows start at 0 in the gnu spreadsheet; decrement to align.
+	$cell_row--;
+	my $end_gnm_cell_tag = '</gnm:Cell>';
 	#Keep track of the current index of the array.
 	#foreach (@temp_file){
 	for( my $i = 0; $i < scalar @temp_file; $i++){
 		my $line = $temp_file[$i];
-		if( $line =~ /Row..$row. Col..$gnu_column.+\"m\/d\/yyyy\"\>(.*)\</ ){
+		if( $line =~ /Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(.*)\</ ){
 			die "Data format \"mm/dd/yyy\" expected for this cell."
-				unless $data =~ /^\d\d\/\d\d\/\d\d\d\d$/;
-			my $epoch = _ss_date_to_num($data);
-			$line =~ s/Row..$row. Col..$gnu_column.+\"m\/d\/yyyy\"\>(.*)\</$1$epoch$endcell/; 
-		}elsif( $line =~ s/Row..$row. Col..$gnu_column.+ValueFormat..\S+..(.*)\</$1$data$endcell/ ){
+				unless $data_to_write =~ /^\d\d\/\d\d\/\d\d\d\d$/;
+			my $epoch_date = _ss_date_to_num($data_to_write);
+			$line =~ s/Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(.*)\</$epoch_date$end_gnm_cell_tag/; 
+		}elsif( $line =~ s/Row..$cell_row. Col..$cell_column.+ValueFormat..\S+..(.*)\</$data_to_write$end_gnm_cell_tag/ ){
 			#print "Writing conditional cell.\n";
-		}elsif( $line =~ s/Row..$row. Col..$gnu_column.+ValueType..\d+..(.+)\</$1$data$endcell/ ){
+		}elsif( $line =~ s/Row..$cell_row. Col..$cell_column.+ValueType..\d+..(.+)\</$data_to_write$end_gnm_cell_tag/ ){
 			#print "Writing nonconditional cell.\n";
 		}elsif( $line =~ /\<\/gnm\:Cells\>/ ){
 			# Did not find a line to change (cell is empty): create line at the end of gnm:Cell block.
 			my $num = $i - 1;
 			print "splicing line $num\n";
-			splice @temp_file, $num, 0, "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>";
+			splice @temp_file, $num, 0, "<gnm:Cell Row=\"$cell_row\" Col=\"$cell_column\" ValueType=\"60\">$data_to_write</gnm:Cell>";
 			$i++;
 		}
 	}
