@@ -10,13 +10,12 @@ my $ss_epoch_year = 1899;
 my $ss_epoch_month = 12;
 my $ss_epoch_day = 30;
 
-# Hash to map cell cell_to_gnu_map to the corresponding numbers used by gnumeric spreadsheet.
+#Hash to map cell letters to the corresponding numbers used by gnumeric spreadsheet.
 my %cell_to_gnu_map = (
 	A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G => 6, H => 7, I => 8, J => 9,
 	K => 10, L => 11, M => 12, N => 13, O => 14, P => 15, Q => 16,
 );
-#my $temp_file = "current_working_temp_file";
-my @temp_file;
+my @current_working_file;
 
 sub new {
 	my ($class, $filename) = @_;
@@ -30,17 +29,16 @@ sub new {
 		filename => $filename, 
 	}, $class;
 	my $gnumeric_ss = $filename;
-	#
 	$gnumeric_ss =~ /(.+)\.gnumeric$/;
 	my $ss = $1;
 	my $gz_ss = "$1.gz";
 	#Convert file to type that is useable by perl.
-	#Read file into global array for use in this instance of object.
+	#Read file into global array for use in this instance of the Editor object.
 	system("cp", $gnumeric_ss, $gz_ss) == 0 or die "System call failed: $?";
 	system("gunzip", $gz_ss) == 0 or die "System call failed: $?";
 	my $temp_fh;
 	open ($temp_fh, "<", $ss) or die "Can't open $temp_fh: $!";
-	chomp(@temp_file = <$temp_fh>);
+	chomp(@current_working_file = <$temp_fh>);
 	close $temp_fh;
 
 	return $self;
@@ -57,10 +55,10 @@ sub savefile {
 	die "Specified file $filename doesn't appear to be a gnumeric spreadsheet"
 		unless $filename =~ /.+\.gnumeric$/;
 
+	#Print current working array to file.
 	my $fh;
 	open ($fh, ">", $filename) or die "Can't open $fh: $!";
-	#open( my $fh, "<", $temp_file) or die "Can't open $temp_file: $!";
-	foreach(@temp_file){
+	foreach(@current_working_file){
 		print $fh "$_\n";
 	}
 	close $fh;
@@ -80,16 +78,16 @@ sub readcell {
 	#Rows start at 0 in the gnu spreadsheet; decrement to align.
 	$cell_row--;
 
-	# Using an if block filter, read through the current file and return the format found first.
-	foreach my $line (@temp_file){
-		# The date type of line also has a ValueType and ValueFormat,
+	#Find the most uniquely formatted line that matches the corresponding row+colum.
+	foreach my $line (@current_working_file){
+		#The date type of line also has a ValueType and ValueFormat,
 		# but no other format has m/d/yyyy format: take it first.
 		if( $line =~ /Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(.+)\</ ){
 			return _ss_num_to_date( $1 );
-		# Take the conditinally formatted cell next.
+		#Take the conditinally formatted (ValueFormat) cell next.
 		}elsif( $line =~ /Row..$cell_row. Col..$cell_column.+ValueFormat..\S+..(.+)\</ ){
 			return $1;
-		# We've run out of special types; just find the cell and return its contents.
+		#We've run out of special types; just find the cell and return its contents.
 		}elsif( $line =~ /Row..$cell_row. Col..$cell_column.+ValueType..\d+..(.+)\</ ){
 			return $1;
 		}
@@ -116,10 +114,12 @@ sub writecell {
 	#Rows start at 0 in the gnu spreadsheet; decrement to align.
 	$cell_row--;
 	
-	#Loop through all the lines in the file corresponding to this instance of Editor.pm
-	for( my $i = 0; $i < scalar @temp_file; $i++){
+	#Similarly to readcell, look for the most unique line that matches the cell row and column.
+	# This time, however, we need to make sure the data is formatted correctly and wrapped in a 
+	# correctly formatted xml/gnm line.
+	for( my $i = 0; $i < scalar @current_working_file; $i++){
 		#Copy line for editing.
-		my $line = $temp_file[$i];
+		my $line = $current_working_file[$i];
 		#Check if the given cell matches a date formatted gnumeric xml line.
 		if( $line =~ /Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(.*)\</ ){
 			#We're writing to the spreadsheet so we need the date in epoch format.
@@ -128,17 +128,17 @@ sub writecell {
 			# wrap that around the epoch date number to form our completed line.
 			$line =~ s/(\<gnm\:Cell Row\=\"$cell_row\" Col\=\"$cell_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>)(.*)(\<\/gnm\:Cell\>)/$1$epoch_date$3/;
 			#Write modified line to our current working file, replacing the old line.
-			$temp_file[$i] = $line;
+			$current_working_file[$i] = $line;
 			#Our job is done; no need to search through the rest of the file.
 			return;
 		#Check for match and replace line with wrapped data_to_write to commplete our ValueFormat line.
 		} elsif( $line =~ s/(\<gnm\:Cell Row\=\"$cell_row\" Col\=\"$cell_column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>)(.*)(\<\/gnm\:Cell\>)/$1$data_to_write$3/){
-			$temp_file[$i] = $line;
+			$current_working_file[$i] = $line;
 			return;
 		#Check if the current line matches this format as well as the given column/row combination and if it does,
 		# wrap the to-be-inputted data with the matched xml both before and after the location of the data.
 		}elsif( $line =~ s/(\<gnm\:Cell Row\=\"$cell_row\" Col\=\"$cell_column\" ValueType\=\"\d+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data_to_write$3/){
-			$temp_file[$i] = $line;
+			$current_working_file[$i] = $line;
 			return;
 		#It looks like we've reached the end of the Cells block. This indicates that we're writing to an empty cell
 		# and that we must create a line inside the Cells block to fill the cell.
@@ -146,10 +146,10 @@ sub writecell {
 			#Create the line we need to insert into the spreadsheet in order to fill the cell.
 			$line = "<gnm:Cell Row=\"$cell_row\" Col=\"$cell_column\" ValueType=\"60\">$data_to_write</gnm:Cell>";
 			#Insert the line into the file one line above the Cells block terminator (inside the Cells block).
-			#We have to use splice here because otherwise a new row won't be created and subsequently,
-			# the line above the Cells block terminator will be clobbered.
+			#We have to use splice here because otherwise a new array location won't be created and subsequently,
+			# the line above the Cells block terminator will be clobbered. We have to make the array larger by 1 at this location.
 			my $prev_line = $i - 1;
-			splice @temp_file, $prev_line, 0, "<gnm:Cell Row=\"$cell_row\" Col=\"$cell_column\" ValueType=\"60\">$data_to_write</gnm:Cell>";
+			splice @current_working_file, $prev_line, 0, "<gnm:Cell Row=\"$cell_row\" Col=\"$cell_column\" ValueType=\"60\">$data_to_write</gnm:Cell>";
 			return;
 		}
 	}
