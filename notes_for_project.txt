@@ -37,5 +37,7 @@ More commenting.
 Report for Len 5/4
 -savefile not saving in gzipped format.  problem?
 -writecell should never have worked after change from temp file
+-without using splice the line above /Cells will be replaced... almost certainly causing issues.
+
 
 
