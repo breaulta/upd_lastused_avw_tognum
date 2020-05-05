@@ -107,34 +107,47 @@ sub writecell {
 		print "No data to write; deleting cell $cell\n";
 	}
 	#Split letter from number
-	die "readcell call not executed properly: Failed to split cell index letter from number."
+	die "Failed to split cell index letter from number."
 		unless $cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
 	my $cell_row = $2;
-	#Dereference letter to number using %cell_to_gnu_map
+	#Dereference letter to gnu number using %cell_to_gnu_map
 	my $cell_column = $cell_to_gnu_map{$column};
 	#Rows start at 0 in the gnu spreadsheet; decrement to align.
 	$cell_row--;
-	my $end_gnm_cell_tag = '</gnm:Cell>';
-	#Keep track of the current index of the array.
-	#foreach (@temp_file){
+	
+	#Loop through all the lines in the file corresponding to this instance of Editor.pm
 	for( my $i = 0; $i < scalar @temp_file; $i++){
+		#Copy line for editing.
 		my $line = $temp_file[$i];
+		#Check if the given cell matches a date formatted gnumeric xml line.
 		if( $line =~ /Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(.*)\</ ){
-			die "Data format \"mm/dd/yyy\" expected for this cell."
-				unless $data_to_write =~ /^\d\d\/\d\d\/\d\d\d\d$/;
+			#We're writing to the spreadsheet so we need the date in epoch format.
 			my $epoch_date = _ss_date_to_num($data_to_write);
-			$line =~ s/Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(.*)\</$epoch_date$end_gnm_cell_tag/; 
-		}elsif( $line =~ s/Row..$cell_row. Col..$cell_column.+ValueFormat..\S+..(.*)\</$data_to_write$end_gnm_cell_tag/ ){
-			#print "Writing conditional cell.\n";
-		}elsif( $line =~ s/Row..$cell_row. Col..$cell_column.+ValueType..\d+..(.+)\</$data_to_write$end_gnm_cell_tag/ ){
-			#print "Writing nonconditional cell.\n";
+			#Match everything before and after where the cell data lives and 
+			# wrap that around the epoch date number to form our completed line.
+			$line =~ s/(\<gnm\:Cell Row\=\"$cell_row\" Col\=\"$cell_column\" ValueType\=\"\d+\"\ ValueFormat\=\"m\/d\/yyyy\"\>)(.*)(\<\/gnm\:Cell\>)/$1$epoch_date$3/;
+			#Write modified line to our current working file, replacing the old line.
+			$temp_file[$i] = $line;
+			#Our job is done; no need to search through the rest of the file.
+			return;
+		#Check for match and replace line with wrapped data_to_write to commplete our ValueFormat line.
+		} elsif( $line =~ s/(\<gnm\:Cell Row\=\"$cell_row\" Col\=\"$cell_column\" ValueType\=\"\d+\"\ ValueFormat\=\"\S+\"\>)(.*)(\<\/gnm\:Cell\>)/$1$data_to_write$3/){
+			$temp_file[$i] = $line;
+			return;
+		#Check if the current line matches this format as well as the given column/row combination and if it does,
+		# wrap the to-be-inputted data with the matched xml both before and after the location of the data.
+		}elsif( $line =~ s/(\<gnm\:Cell Row\=\"$cell_row\" Col\=\"$cell_column\" ValueType\=\"\d+\"\>)(.+)(\<\/gnm\:Cell\>)/$1$data_to_write$3/){
+			$temp_file[$i] = $line;
+			return;
+		#It looks like we've reached the end of the Cells block. This indicates that we're writing to an empty cell
+		# and that we must create a line inside the Cells block to fill the cell.
 		}elsif( $line =~ /\<\/gnm\:Cells\>/ ){
-			# Did not find a line to change (cell is empty): create line at the end of gnm:Cell block.
-			my $num = $i - 1;
-			print "splicing line $num\n";
-			splice @temp_file, $num, 0, "<gnm:Cell Row=\"$cell_row\" Col=\"$cell_column\" ValueType=\"60\">$data_to_write</gnm:Cell>";
-			$i++;
+			#Create the line we need to insert into the spreadsheet in order to fill the cell.
+			$line = "<gnm:Cell Row=\"$cell_row\" Col=\"$cell_column\" ValueType=\"60\">$data_to_write</gnm:Cell>";
+			#Insert the line into the file one line above the Cells block terminator (inside the Cells block).
+			$temp_file[$i-1] = $line;
+			return;
 		}
 	}
 }
