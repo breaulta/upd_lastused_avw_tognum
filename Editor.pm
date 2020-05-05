@@ -146,7 +146,9 @@ sub writecell {
 			#Create the line we need to insert into the spreadsheet in order to fill the cell.
 			$line = "<gnm:Cell Row=\"$cell_row\" Col=\"$cell_column\" ValueType=\"60\">$data_to_write</gnm:Cell>";
 			#Insert the line into the file one line above the Cells block terminator (inside the Cells block).
-			$temp_file[$i-1] = $line;
+			#We have to use splice here because otherwise a new row won't be created and subsequently,
+			# the line above the Cells block terminator will be clobbered.
+			splice @temp_file, $num, 0, "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>";
 			return;
 		}
 	}
