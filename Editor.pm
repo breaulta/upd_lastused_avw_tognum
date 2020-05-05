@@ -148,7 +148,8 @@ sub writecell {
 			#Insert the line into the file one line above the Cells block terminator (inside the Cells block).
 			#We have to use splice here because otherwise a new row won't be created and subsequently,
 			# the line above the Cells block terminator will be clobbered.
-			splice @temp_file, $num, 0, "<gnm:Cell Row=\"$row\" Col=\"$gnu_column\" ValueType=\"60\">$data</gnm:Cell>";
+			my $prev_line = $i - 1;
+			splice @temp_file, $prev_line, 0, "<gnm:Cell Row=\"$cell_row\" Col=\"$cell_column\" ValueType=\"60\">$data_to_write</gnm:Cell>";
 			return;
 		}
 	}
