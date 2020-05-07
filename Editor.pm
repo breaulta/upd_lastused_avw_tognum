@@ -6,10 +6,6 @@ use warnings;
 #Needed for epoch calculation.
 use Date::Calc qw(:all);
 
-my $ss_epoch_year = 1899;
-my $ss_epoch_month = 12;
-my $ss_epoch_day = 30;
-
 #Hash to map cell letters to the corresponding numbers used by gnumeric spreadsheet.
 my %cell_to_gnu_map = (
 	A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G => 6, H => 7, I => 8, J => 9,
@@ -155,6 +151,15 @@ sub writecell {
 	}
 }
 
+
+#Spreadsheets measure dates by an integer count, where the epoch is December 30, 1899. The history behind this decision is found here: https://tinyurl.com/utube75
+my $ss_epoch_year = 1899;
+my $ss_epoch_month = 12;
+my $ss_epoch_day = 30;
+
+#Convert Gnumeric days-from-epoch date, to standard mm/dd/yyyy date.
+#Prints "3/12/2020" for sample Gnumeric cell date/day integer "43902".
+#print ss_num_to_date("43902"), "\n";
 sub _ss_num_to_date {
     my $num = shift;
     #Number must be an integer.
@@ -164,6 +169,7 @@ sub _ss_num_to_date {
 
 }
 
+#Converts back to Gnumeric days-from-epoch date from mm/dd/yyyy input date.
 sub _ss_date_to_num {
     my $date = shift;
     #Date must be in m/d/yyyy format.
