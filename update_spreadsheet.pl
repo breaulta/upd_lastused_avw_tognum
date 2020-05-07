@@ -203,7 +203,7 @@ sub get_account_data {
 		unless (defined $phone_fields{$field}){
 			die "Field $field is undefined for account $username\n" if $login_attempt_num > 3;
 			$login_attempt_num++;
-			print "Field $field is not defined so trying again, attempt $login_attempt_num\n";
+			print "Field $field is not defined for account $username so trying again, attempt $login_attempt_num\n";
 			return get_account_data($username, $account_pass, $login_attempt_num);
 		}
 	}
