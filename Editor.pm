@@ -40,6 +40,11 @@ sub new {
 	#Read file into global array for use in this instance of the Editor object.
 	open (my $unzipped_fh, "<", $filename_noextension);
 	chomp( @current_working_file = <$unzipped_fh> );
+#REMOVE THIS.
+open (my $f, ">", "xml.txt");
+foreach(@current_working_file){
+	print $f "$_\n";
+}
 	close $unzipped_fh;
 	unlink $filename_noextension;
 
@@ -71,30 +76,28 @@ sub readcell {
 	my $self = shift;
 	my $cell = shift;
 
-	#Split letter from number
-	die "readcell call not executed properly: Failed to split cell index letter from number."
-		unless $cell =~ /(\w)(\d+)/;
-	my $column = uc $1;	#Set everything to uppercase.
-	my $cell_row = $2;
-	#Dereference letter to number using %column_letter_to_number_gnumeric_map
-	my $cell_column = $column_letter_to_number_gnumeric_map{$column};
-	#Rows start at 0 in the gnu spreadsheet; decrement to align.
-	$cell_row--;
-
-	#Find the most uniquely formatted line that matches the corresponding row+colum.
+	#Get XML accessible column and row coordinates from Gnumeric cell name.
+	my ($cell_column, $cell_row) = _convert_cell_to_column_and_row_coordinates($cell);
+	#Return Gnumeric cell contents, applying any needed format conversions.
 	foreach my $line (@current_working_file){
-		#The date type of line also has a ValueType and ValueFormat,
-		# but no other format has m/d/yyyy format: take it first.
-		if( $line =~ /Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(.+)\</ ){
+		#Match for specially formatted date cells first.
+		#Dates are stored as integers, so convert to mm/dd/yyyy format.
+		if( $line =~ /Row..$cell_row. Col..$cell_column.+\"m\/d\/yyyy\"\>(\d+)\</ ){
 			return _ss_num_to_date( $1 );
-		#Take the conditinally formatted (ValueFormat) cell next.
-		}elsif( $line =~ /Row..$cell_row. Col..$cell_column.+ValueFormat..\S+..(.+)\</ ){
+		#Match standard cell contents.
+		} elsif( $line =~ /Row..$cell_row. Col..$cell_column.+>(.*)</){
 			return $1;
-		#We've run out of special types; just find the cell and return its contents.
-		}elsif( $line =~ /Row..$cell_row. Col..$cell_column.+ValueType..\d+..(.+)\</ ){
-			return $1;
+		#Or, continue onward through the file, as long as there are no matching errors...
+		} elsif( $line =~ /Row..$cell_row. Col..$cell_column/ )  {
+			#It's a Gnumeric cell Jim, but not as we know it.
+			die "Could not extract Gnumeric cell contents for cell $cell\nline: $line\n";
 		}
+		#Exit loop once end of cells are reached.
+		#This is done to omit historical invisible cell saved at the end of the file.
+		last if $line =~ m/<\/gnm:Cells>/;
 	}
+	#After having searched every line of the file, we can conclude the cell is blank.
+	return "";
 }
 
 sub writecell {
@@ -159,6 +162,21 @@ sub writecell {
 }
 
 
+#Takes a Gnumeric cell such as and returns XML column/row coordinates
+#For example, input of 'E2' will return (4,1).
+sub _convert_cell_to_column_and_row_coordinates {
+	my $gnumeric_cell = shift;
+	die "Could not convert cell input of $gnumeric_cell to row and column coordinates."
+		unless $gnumeric_cell =~ /^([A-Za-z]+)(\d+)$/;
+	my $letter_column = uc $1;	#Set letters to uppercase to correspond with hash keys.
+	#Dereference letter to number using %column_letter_to_number_gnumeric_map
+	my $column_coordinate = $column_letter_to_number_gnumeric_map{$letter_column};
+	#Rows start at 0 in the gnu spreadsheet; decrement to align.
+	my $row_coordinate = $2;
+	$row_coordinate--;
+	return ($column_coordinate, $row_coordinate);
+}
+
 #Spreadsheets measure dates by an integer count, where the epoch is December 30, 1899. The history behind this decision is found here: https://tinyurl.com/utube75
 my $ss_epoch_year = 1899;
 my $ss_epoch_month = 12;
@@ -184,4 +202,5 @@ sub _ss_date_to_num {
     my ($month, $day, $year) = ($1, $2, $3);
     return Delta_Days($ss_epoch_year,$ss_epoch_month,$ss_epoch_day,$year,$month,$day);
 }
+
 1;
