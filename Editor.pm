@@ -3,61 +3,68 @@ package Editor;
 use strict;
 use warnings;
 
-#Needed for epoch calculation.
+#Needed for spreadsheet epoch calculation.
 use Date::Calc qw(:all);
 
-#Hash to map cell letters to the corresponding numbers used by gnumeric spreadsheet.
-my %cell_to_gnu_map = (
-	A => 0, B => 1, C => 2, D => 3, E => 4, F => 5, G => 6, H => 7, I => 8, J => 9,
-	K => 10, L => 11, M => 12, N => 13, O => 14, P => 15, Q => 16,
-);
+#Hash to map cell letters of Gnumeric spreadsheet to column numbers.
+#Map range is from column 'A' to 'ZZZ', or 0 to 18277 in column numbers.
+my %column_letter_to_number_gnumeric_map;
+for (my $letter = 'A', my $number = 0; $letter ne 'AAAA'; $letter++, $number++){
+	$column_letter_to_number_gnumeric_map{$letter} = $number;
+}
+
+#Array to keep working draft of Gnumeric file being edited.
 my @current_working_file;
 
+#Create Gnumeric spreadsheet object for reading and writing.
 sub new {
-	my ($class, $filename) = @_;
-	die "Specified file $filename doesn't appear to be a gnumeric spreadsheet"
-		unless $filename =~ /.+\.gnumeric$/;
+	my $class = shift;
+	my $self = {@_};
+	bless $self, $class;
+
+	#Check that file is good gnumeric file.
+	my $filename = $self->{filename};
+	my $filename_noextension;
+	if ($filename =~ /(.+)\.gnumeric$/){
+		$filename_noextension = $1;
+	}
+	else{
+		die "Specified file $filename doesn't appear to be a gnumeric spreadsheet"
+	}
 	die "Specified file $filename doesn't exist!"
 		unless -e $filename;
-	#https://perldoc.perl.org/functions/bless.html
-	#Instantiates the Class into the Object?
-	my $self = bless { 
-		filename => $filename, 
-	}, $class;
-	my $gnumeric_ss = $filename;
-	$gnumeric_ss =~ /(.+)\.gnumeric$/;
-	my $ss = $1;
-	my $gz_ss = "$1.gz";
-	#Convert file to type that is useable by perl.
+	#Gnumeric files are compressed using gzip, unzip copy of file for editing.
+	my $gz_filename = $filename_noextension . ".gz";
+	system("cp", $filename, $gz_filename) == 0 or die "Could not copy $filename: $?";
+	system("gunzip", $gz_filename) == 0 or die "Could not unzip $gz_filename: $?";
 	#Read file into global array for use in this instance of the Editor object.
-	system("cp", $gnumeric_ss, $gz_ss) == 0 or die "System call failed: $?";
-	system("gunzip", $gz_ss) == 0 or die "System call failed: $?";
-	my $temp_fh;
-	open ($temp_fh, "<", $ss) or die "Can't open $temp_fh: $!";
-	chomp(@current_working_file = <$temp_fh>);
-	close $temp_fh;
+	open (my $unzipped_fh, "<", $filename_noextension);
+	chomp( @current_working_file = <$unzipped_fh> );
+	close $unzipped_fh;
+	unlink $filename_noextension;
 
 	return $self;
 }
 
+#Save file to output filename specified in first parameter.
 sub savefile {
 	my $self = shift;
-	my $filename = shift;
+	my $output_filename = shift;
 
-	# Save file to original if no file is passed.
-	if( $filename eq ""){
-		$filename = $self->filename;
-	}
-	die "Specified file $filename doesn't appear to be a gnumeric spreadsheet"
-		unless $filename =~ /.+\.gnumeric$/;
-
-	#Print current working array to file.
-	my $fh;
-	open ($fh, ">", $filename) or die "Can't open $fh: $!";
+	#Overwrite original file if no alternative output filename was specified.
+	$output_filename = $self->{filename}
+		unless defined $output_filename;
+	die "Output file $output_filename doesn't appear to be a gnumeric spreadsheet"
+		unless $output_filename =~ /.+\.gnumeric$/;
+	#Write edited Gnumeric file stored in memory as an array to hard disk.
+	open (my $output_fh, ">", $output_filename) or die "Can't open file $output_filename: $!";
 	foreach(@current_working_file){
-		print $fh "$_\n";
+		print $output_fh "$_\n";
 	}
-	close $fh;
+	close $output_fh;
+	#Gzip file.
+	system("gzip", $output_filename) == 0 or die "Could not gzip $output_filename: $?";
+	system("mv", "$output_filename.gz", $output_filename) == 0 or die "Could not move $output_filename: $?";
 }
 
 sub readcell {
@@ -69,8 +76,8 @@ sub readcell {
 		unless $cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
 	my $cell_row = $2;
-	#Dereference letter to number using %cell_to_gnu_map
-	my $cell_column = $cell_to_gnu_map{$column};
+	#Dereference letter to number using %column_letter_to_number_gnumeric_map
+	my $cell_column = $column_letter_to_number_gnumeric_map{$column};
 	#Rows start at 0 in the gnu spreadsheet; decrement to align.
 	$cell_row--;
 
@@ -105,8 +112,8 @@ sub writecell {
 		unless $cell =~ /(\w)(\d+)/;
 	my $column = uc $1;	#Set everything to uppercase.
 	my $cell_row = $2;
-	#Dereference letter to gnu number using %cell_to_gnu_map
-	my $cell_column = $cell_to_gnu_map{$column};
+	#Dereference letter to gnu number using %column_letter_to_number_gnumeric_map
+	my $cell_column = $column_letter_to_number_gnumeric_map{$column};
 	#Rows start at 0 in the gnu spreadsheet; decrement to align.
 	$cell_row--;
 	
